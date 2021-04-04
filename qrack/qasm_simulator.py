@@ -23,8 +23,9 @@ import os
 from typing import Dict
 from .qrack_controller_wrapper import qrack_controller_factory
 
-from cirq import circuits, ops, study
+from cirq import circuits, ops, protocols, study
 from cirq.sim import SimulatesSamples
+from cirq.sim.simulator import check_all_resolved, split_into_matching_protocol_then_general
 
 
 class QasmSimulator(SimulatesSamples):
@@ -90,254 +91,7 @@ class QasmSimulator(SimulatesSamples):
         'stabilizer': True,
         'opencl': True,
         'opencl_device_id': -1,
-        'opencl_multi': False,
-        'basis_gates': [
-            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cz', 'ch', 'id', 'x', 'sx', 'y', 'z', 'h',
-            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
-            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer', 'reset', 'measure'
-        ],
-        'gates': [{
-            'name': 'u1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
-            'qasm_def': 'gate u1(lam) q { U(0,0,lam) q; }'
-        }, {
-            'name': 'u2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description':
-            'Single-qubit gate [[1, -exp(1j*lam)], [exp(1j*phi), exp(1j*(phi+lam))]]/sqrt(2)',
-            'qasm_def': 'gate u2(phi,lam) q { U(pi/2,phi,lam) q; }'
-        }, {
-            'name':
-            'u3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional':
-            True,
-            'description':
-            'Single-qubit gate with three rotation angles',
-            'qasm_def':
-            'gate u3(theta,phi,lam) q { U(theta,phi,lam) q; }'
-        }, {
-            'name':
-            'u',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional':
-            True,
-            'description':
-            'Single-qubit gate with three rotation angles',
-            'qasm_def':
-            'gate u(theta,phi,lam) q { U(theta,phi,lam) q; }'
-        }, {
-            'name': 'p',
-            'parameters': ['theta', 'phi'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[cos(theta), -1j*exp(-1j*phi)], [sin(theta), -1j*exp(1j *phi)*sin(theta), cos(theta)]]',
-            'qasm_def': 'gate r(theta, phi) q { U(theta, phi - pi/2, -phi + pi/2) q;}'
-        }, {
-            'name': 'r',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
-            'qasm_def': 'gate p(lam) q { U(0,0,lam) q; }'
-        }, {
-            'name': 'cx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-NOT gate',
-            'qasm_def': 'gate cx c,t { CX c,t; }'
-        }, {
-            'name': 'cz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-Z gate',
-            'qasm_def': 'gate cz a,b { h b; cx a,b; h b; }'
-        }, {
-            'name': 'ch',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-H gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'id',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit identity gate',
-            'qasm_def': 'gate id a { U(0,0,0) a; }'
-        }, {
-            'name': 'x',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-X gate',
-            'qasm_def': 'gate x a { U(pi,0,pi) a; }'
-        }, {
-            'name': 'sx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit square root of Pauli-X gate',
-            'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
-        }, {
-            'name': 'y',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Y gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'z',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'h',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Hadamard gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'rx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-X axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'ry',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Y axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'rz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Z axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 's',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit phase gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'sdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit adjoint phase gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 't',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit T gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'tdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit adjoint T gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'swap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit SWAP gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'ccx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit Toffoli gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cswap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'initialize',
-            'parameters': ['vector'],
-            'conditional': False,
-            'description': 'N-qubit state initialize. '
-                           'Resets qubits then sets statevector to the parameter vector.',
-            'qasm_def': 'initialize(vector) q1, q2,...'
-        }, {
-            'name': 'cu1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u1 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cu2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u2 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cu3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u3 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-X gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcy',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-Y gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u1 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u2 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u3 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcswap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-SWAP gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'multiplexer',
-            'parameters': ['mat1', 'mat2', '...'],
-            'conditional': True,
-            'description': 'N-qubit multi-plexer gate. '
-                           'The input parameters are the gates for each value.'
-                           'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'reset',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Reset qubit to 0 state',
-            'qasm_def': 'TODO'
-        }]
+        'opencl_multi': False
     }
 
     # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
@@ -357,13 +111,13 @@ class QasmSimulator(SimulatesSamples):
         resolved_circuit = protocols.resolve_parameters(circuit, param_resolver)
         check_all_resolved(resolved_circuit)
         qubit_order = sorted(resolved_circuit.all_qubits())
+        
+        self._number_of_qubits = len(qubit_order)
 
         # Simulate as many unitary operations as possible before having to
         # repeat work for each sample.
         unitary_prefix, general_suffix = (
             split_into_matching_protocol_then_general(resolved_circuit, protocols.has_unitary)
-            if protocols.has_unitary(self.noise)
-            else (resolved_circuit[0:0], resolved_circuit)
         )
         
         qubits = ops.QubitOrder.as_qubit_order(qubit_order).order_for(unitary_prefix.all_qubits())
@@ -379,15 +133,15 @@ class QasmSimulator(SimulatesSamples):
             is_unitary_preamble = True
             self._sample_measure = True
             self._sim = qrack_controller_factory()
-            self._sim.initialize_qreg(self._configuration.opencl,
-                                      self._configuration.schmidt_decompose,
-                                      self._configuration.paging,
-                                      self._configuration.stabilizer,
+            self._sim.initialize_qreg(self._configuration['opencl'],
+                                      self._configuration['schmidt_decompose'],
+                                      self._configuration['paging'],
+                                      self._configuration['stabilizer'],
                                       self._number_of_qubits,
-                                      self._configuration.opencl_device_id,
-                                      self._configuration.opencl_multi,
-                                      self._configuration.normalize,
-                                      self._configuration.zero_threshold)
+                                      self._configuration['opencl_device_id'],
+                                      self._configuration['opencl_multi'],
+                                      self._configuration['normalize'],
+                                      self._configuration['zero_threshold'])
 
             for op in unitary_prefix:
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
@@ -396,25 +150,30 @@ class QasmSimulator(SimulatesSamples):
             self._sample_measure = False
 
         preamble_sim = self._sim if is_unitary_preamble else None
+        shotLoopMax = 1 if self._sample_measure else repetitions
+            
 
         for shot in range(shotLoopMax):
+            loopSuffix = None
             if not is_unitary_preamble:
+                loopSuffix = resolved_circuit
                 self._sim = qrack_controller_factory()
-                self._sim.initialize_qreg(self._configuration.opencl,
-                                          self._configuration.schmidt_decompose,
-                                          self._configuration.paging,
-                                          self._configuration.stabilizer,
+                self._sim.initialize_qreg(self._configuration['opencl'],
+                                          self._configuration['schmidt_decompose'],
+                                          self._configuration['paging'],
+                                          self._configuration['stabilizer'],
                                           self._number_of_qubits,
-                                          self._configuration.opencl_device_id,
-                                          self._configuration.opencl_multi,
-                                          self._configuration.normalize,
-                                          self._configuration.zero_threshold)
+                                          self._configuration['opencl_device_id'],
+                                          self._configuration['opencl_multi'],
+                                          self._configuration['normalize'],
+                                          self._configuration['zero_threshold'])
             else:
+                loopSuffix = general_suffix
                 self._sim = preamble_sim.clone()
 
-            for operation in experiment.instructions[nonunitary_start:]:
+            for op in loopSuffix:
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                self._apply_op(operation, shotsPerLoop)
+                self._try_gate(op, indices)
 
         return dict(Counter(self.__memory))
         

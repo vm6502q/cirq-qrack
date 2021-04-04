@@ -67,6 +67,7 @@ class TestQrackSimulator(unittest.TestCase):
         for _ in range(self.test_repeat):
             index = np.random.randint(self.qubit_n)
             circuit.append(gate_op(qubits[index]))
+            circuit.append(cirq.ops.measure(qubits[index]))
             # print("flip {}".format(index))
             self.check_result(circuit)
 
@@ -77,6 +78,7 @@ class TestQrackSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             angle = np.random.rand() * np.pi * 2
             circuit.append(gate_op(angle).on(qubits[index]))
+            circuit.append(cirq.ops.measure(qubits[index]))
             self.check_result(circuit)
 
     def check_two_qubit_gate(self, gate_op):
@@ -90,6 +92,8 @@ class TestQrackSimulator(unittest.TestCase):
             np.random.shuffle(all_indices)
             index = all_indices[:2]
             circuit.append(gate_op(qubits[index[0]], qubits[index[1]]))
+            circuit.append(cirq.ops.measure(qubits[index[0]]))
+            circuit.append(cirq.ops.measure(qubits[index[1]]))
             self.check_result(circuit)
 
     def check_two_qubit_rotation_gate(self, gate_op):
@@ -105,6 +109,8 @@ class TestQrackSimulator(unittest.TestCase):
             angle = np.random.rand() * np.pi * 2
             gate_op_angle = gate_op(exponent=angle)
             circuit.append(gate_op_angle(qubits[index[0]], qubits[index[1]]))
+            circuit.append(cirq.ops.measure(qubits[index[0]]))
+            circuit.append(cirq.ops.measure(qubits[index[1]]))
             self.check_result(circuit)
 
     def check_three_qubit_gate(self, gate_op):
@@ -118,6 +124,9 @@ class TestQrackSimulator(unittest.TestCase):
             np.random.shuffle(all_indices)
             index = all_indices[:3]
             circuit.append(gate_op(qubits[index[0]], qubits[index[1]], qubits[index[2]]))
+            circuit.append(cirq.ops.measure(qubits[index[0]]))
+            circuit.append(cirq.ops.measure(qubits[index[1]]))
+            circuit.append(cirq.ops.measure(qubits[index[2]]))
             self.check_result(circuit)
 
     def check_three_qubit_rotation_gate(self, gate_op):
@@ -133,6 +142,9 @@ class TestQrackSimulator(unittest.TestCase):
             angle = np.random.rand() * np.pi * 2
             gate_op_angle = gate_op(exponent=angle)
             circuit.append(gate_op_angle(qubits[index[0]], qubits[index[1]], qubits[index[2]]))
+            circuit.append(cirq.ops.measure(qubits[index[0]]))
+            circuit.append(cirq.ops.measure(qubits[index[1]]))
+            circuit.append(cirq.ops.measure(qubits[index[2]]))
             self.check_result(circuit)
 
     def test_QrackSimulator_Xgate(self):
