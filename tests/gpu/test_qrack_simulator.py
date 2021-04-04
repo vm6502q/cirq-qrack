@@ -241,6 +241,7 @@ class TestQrackSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             angle = np.random.rand(3) * np.pi * 2
             circuit.append(cirq.circuits.qasm_output.QasmUGate(angle[0], angle[1], angle[2]).on(qubits[index]))
+            circuit.append(cirq.ops.measure(qubits[index]))
             self.check_result(circuit)
 
     def test_QrackSimulator_SingleQubitMatrixGate(self):
@@ -253,6 +254,7 @@ class TestQrackSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             mat = unitary_group.rvs(2)
             circuit.append(cirq.MatrixGate(mat).on(qubits[index]))
+            circuit.append(cirq.ops.measure(qubits[index]))
             self.check_result(circuit)
 
     def test_QrackSimulator_TwoQubitMatrixGate(self):
@@ -264,6 +266,8 @@ class TestQrackSimulator(unittest.TestCase):
             index = all_indices[:2]
             mat = unitary_group.rvs(4)
             circuit.append(cirq.MatrixGate(mat).on(qubits[index[0]], qubits[index[1]]))
+            circuit.append(cirq.ops.measure(qubits[index[0]]))
+            circuit.append(cirq.ops.measure(qubits[index[1]]))
             self.check_result(circuit)
 
     def test_QrackSimulator_QuantumVolume(self):
