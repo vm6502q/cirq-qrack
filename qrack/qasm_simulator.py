@@ -20,8 +20,10 @@ import numpy as np
 from collections import Counter
 import logging
 import os
+from typing import Dict
 from .qrack_controller_wrapper import qrack_controller_factory
 
+from cirq import circuits, ops, study
 from cirq.sim import SimulatesSamples
 
 
