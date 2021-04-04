@@ -57,9 +57,9 @@ class TestQrackSimulator(unittest.TestCase):
         self.test_repeat = 4
 
     def check_result(self, circuit, rtol=1e-9, atol=0):
-        qrack_result = QasmSimulator().run(circuit, repetitions=100)
-        cirq_result = cirq.Simulator(dtype=dtype).run(circuit, repetitions=100)
-        self.assertEquals(actual, expected)
+        actual = QasmSimulator().run(circuit, repetitions=100)
+        expected = cirq.Simulator().run(circuit, repetitions=100)
+        self.assertEquals(actual.measurements, expected.measurements)
 
     def check_single_qubit_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]

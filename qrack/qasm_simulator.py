@@ -101,6 +101,7 @@ class QasmSimulator(SimulatesSamples):
         self._number_of_qubits = None
         self._results = {}
         self._shots = {}
+        self._classical_memory = 0
         self._local_random = np.random.RandomState()
 
     def _run(
@@ -111,7 +112,7 @@ class QasmSimulator(SimulatesSamples):
         resolved_circuit = protocols.resolve_parameters(circuit, param_resolver)
         check_all_resolved(resolved_circuit)
         qubit_order = sorted(resolved_circuit.all_qubits())
-        
+
         self._number_of_qubits = len(qubit_order)
 
         # Simulate as many unitary operations as possible before having to
@@ -127,81 +128,69 @@ class QasmSimulator(SimulatesSamples):
 
         is_unitary_preamble = False
 
-        if self._sample_measure:
-            nonunitary_start = 0
-        else:
-            is_unitary_preamble = True
-            self._sample_measure = True
-            self._sim = qrack_controller_factory()
-            self._sim.initialize_qreg(self._configuration['opencl'],
-                                      self._configuration['schmidt_decompose'],
-                                      self._configuration['paging'],
-                                      self._configuration['stabilizer'],
-                                      self._number_of_qubits,
-                                      self._configuration['opencl_device_id'],
-                                      self._configuration['opencl_multi'],
-                                      self._configuration['normalize'],
-                                      self._configuration['zero_threshold'])
+        self._sample_measure = True
+        self._sim = qrack_controller_factory()
+        self._sim.initialize_qreg(self._configuration['opencl'],
+                                  self._configuration['schmidt_decompose'],
+                                  self._configuration['paging'],
+                                  self._configuration['stabilizer'],
+                                  self._number_of_qubits,
+                                  self._configuration['opencl_device_id'],
+                                  self._configuration['opencl_multi'],
+                                  self._configuration['normalize'],
+                                  self._configuration['zero_threshold'])
 
-            for op in unitary_prefix:
+        for moment in unitary_prefix:
+            operations = moment.operations
+            for op in operations:
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
                 self._try_gate(op, indices)
 
-            self._sample_measure = False
+        general_ops = list(general_suffix.all_operations())
+        if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
+            indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+            self.__memory = self._add_sample_measure(indices, repetitions)
+            return dict(Counter(self.__memory))
 
-        preamble_sim = self._sim if is_unitary_preamble else None
-        shotLoopMax = 1 if self._sample_measure else repetitions
-            
+        self._sample_measure = False
 
-        for shot in range(shotLoopMax):
-            loopSuffix = None
-            if not is_unitary_preamble:
-                loopSuffix = resolved_circuit
-                self._sim = qrack_controller_factory()
-                self._sim.initialize_qreg(self._configuration['opencl'],
-                                          self._configuration['schmidt_decompose'],
-                                          self._configuration['paging'],
-                                          self._configuration['stabilizer'],
-                                          self._number_of_qubits,
-                                          self._configuration['opencl_device_id'],
-                                          self._configuration['opencl_multi'],
-                                          self._configuration['normalize'],
-                                          self._configuration['zero_threshold'])
-            else:
-                loopSuffix = general_suffix
-                self._sim = preamble_sim.clone()
+        for shot in range(repetitions):
+            loopSuffix = general_suffix
+            self._sim = preamble_sim.clone()
 
-            for op in loopSuffix:
-                indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                self._try_gate(op, indices)
+            for moment in general_suffix:
+                operations = moment.operations
+                for op in operations:
+                    indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+                    self._try_gate(op, indices)
 
         return dict(Counter(self.__memory))
         
     def _try_gate(self, op: ops.GateOperation, indices: np.array):
         # One qubit gate
         if isinstance(op.gate, ops.pauli_gates._PauliX):
-            self._sim.x(indices[0])
+            self._sim.x([indices[0]])
         elif isinstance(op.gate, ops.pauli_gates._PauliY):
-            self._sim.y(indices[0])
+            self._sim.y([indices[0]])
         elif isinstance(op.gate, ops.pauli_gates._PauliZ):
-            self._sim.z(indices[0])
+            self._sim.z([indices[0]])
         elif isinstance(op.gate, ops.common_gates.HPowGate):
             mat = np.power([[1,1],[1,-1]], -np.pi * op.gate._exponent)
-            self._sim.matrix_gate(indices[0], mat)
+            self._sim.matrix_gate([indices[0]], mat)
         elif isinstance(op.gate, ops.common_gates.XPowGate):
-            self._sim.rx(indices[0], [-np.pi * op.gate._exponent])
+            self._sim.rx([indices[0]], [-np.pi * op.gate._exponent])
         elif isinstance(op.gate, ops.common_gates.YPowGate):
-            self._sim.ry(indices[0], [-np.pi * op.gate._exponent])
+            self._sim.ry([indices[0]], [-np.pi * op.gate._exponent])
         elif isinstance(op.gate, ops.common_gates.ZPowGate):
-            self._sim.rz(indices[0], [-np.pi * op.gate._exponent])
+            self._sim.rz([indices[0]], [-np.pi * op.gate._exponent])
         elif (len(indices) == 1 and isinstance(op.gate, ops.matrix_gates.MatrixGate)):
             mat = op.gate._matrix
-            self._sim.matrix_gate(indices[0], mat)
+            self._sim.matrix_gate([indices[0]], mat)
         elif isinstance(op.gate, circuits.qasm_output.QasmUGate):
             lmda = op.gate.lmda
             theta = op.gate.theta
             phi = op.gate.phi
-            self._sim.u(indices[0], [lmda, theta, phi])
+            self._sim.u([indices[0]], [lmda, theta, phi])
 
         # Two qubit gate
         elif isinstance(op.gate, ops.common_gates.CNotPowGate):
@@ -262,3 +251,44 @@ class QasmSimulator(SimulatesSamples):
             return False
 
         return True
+
+    def _add_sample_measure(self, measure_qubit, num_samples):
+        """Generate memory samples from current statevector.
+        Taken almost straight from the terra source code.
+        Args:
+            measure_params (list): List of (qubit, clbit) values for
+                                   measure instructions to sample.
+            num_samples (int): The number of memory samples to generate.
+        Returns:
+            list: A list of memory values in hex format.
+        """
+        memory = []
+
+        # If we only want one sample, it's faster for the backend to do it,
+        # without passing back the probabilities.
+        if num_samples == 1:
+            sample = self._sim.measure(measure_qubit)
+            classical_state = self._classical_memory
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                qubit_outcome = (sample >> qubit) & 1
+                classical_state = (classical_state & (~1)) | qubit_outcome
+            outKey = bin(classical_state)[2:]
+            memory += [hex(int(outKey, 2))]
+            self._classical_memory = classical_state
+            return memory
+
+        # Sample and convert to bit-strings
+        measure_results = self._sim.measure_shots(measure_qubit, num_samples)
+        classical_state = self._classical_memory
+        for key, value in measure_results.items():
+            sample = key
+            classical_state = self._classical_memory
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                qubit_outcome = (sample >> index) & 1
+                classical_state = (classical_state & (~1)) | qubit_outcome
+            outKey = bin(classical_state)[2:]
+            memory += value * [hex(int(outKey, 2))]
+
+        return memory
