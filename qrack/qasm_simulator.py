@@ -233,7 +233,7 @@ class QasmSimulator(SimulatesSamples):
                 self._sim.ctrld_matrix_gate(indices, mat)
         elif isinstance(op.gate, ops.three_qubit_gates.CCZPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.ccz([indices[0], indices[1]])
+                self._sim.cz([indices[0], indices[1], indices[2]])
             else:
                 mat = np.power([[0,1],[1,0]], -np.pi * op.gate._exponent)
                 self._sim.ctrld_matrix_gate(indices, mat)
