@@ -42,7 +42,7 @@ qrack_extension = [Extension(
                   )]
 
 setup(
-    name='cirq-qrack-provider',
+    name='cirqqrack',
     version=VERSION,
     ext_modules = cythonize(qrack_extension),
     packages=find_packages(exclude=['tests']),

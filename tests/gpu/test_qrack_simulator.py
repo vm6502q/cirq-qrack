@@ -184,14 +184,14 @@ class TestQrackSimulator(unittest.TestCase):
     def test_QrackSimulator_ISWAPgate(self):
         self.check_two_qubit_gate(cirq.ops.ISWAP)
 
-    #def test_QrackSimulator_XXgate(self):
-    #    self.check_two_qubit_gate(cirq.ops.XX)
+    def test_QrackSimulator_XXgate(self):
+        self.check_two_qubit_gate(cirq.ops.XX)
 
-    #def test_QrackSimulator_YYgate(self):
-    #    self.check_two_qubit_gate(cirq.ops.YY)
+    def test_QrackSimulator_YYgate(self):
+        self.check_two_qubit_gate(cirq.ops.YY)
 
-    #def test_QrackSimulator_ZZgate(self):
-    #    self.check_two_qubit_gate(cirq.ops.ZZ)
+    def test_QrackSimulator_ZZgate(self):
+        self.check_two_qubit_gate(cirq.ops.ZZ)
 
     def test_QrackSimulator_CNotPowgate(self):
         self.check_two_qubit_rotation_gate(cirq.ops.CNotPowGate)
@@ -205,14 +205,14 @@ class TestQrackSimulator(unittest.TestCase):
     def test_QrackSimulator_ISwapPowgate(self):
         self.check_two_qubit_rotation_gate(cirq.ops.ISwapPowGate)
 
-    #def test_QrackSimulator_XXPowgate(self):
-    #    self.check_two_qubit_rotation_gate(cirq.ops.XXPowGate)
+    def test_QrackSimulator_XXPowgate(self):
+        self.check_two_qubit_rotation_gate(cirq.ops.XXPowGate)
 
-    #def test_QrackSimulator_YYPowgate(self):
-    #    self.check_two_qubit_rotation_gate(cirq.ops.YYPowGate)
+    def test_QrackSimulator_YYPowgate(self):
+        self.check_two_qubit_rotation_gate(cirq.ops.YYPowGate)
 
-    #def test_QrackSimulator_ZZPowgate(self):
-    #    self.check_two_qubit_rotation_gate(cirq.ops.ZZPowGate)
+    def test_QrackSimulator_ZZPowgate(self):
+        self.check_two_qubit_rotation_gate(cirq.ops.ZZPowGate)
 
     def test_QrackSimulator_CCXgate(self):
         self.check_three_qubit_gate(cirq.ops.CCX)
