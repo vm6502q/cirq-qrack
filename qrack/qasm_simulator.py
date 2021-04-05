@@ -17,6 +17,7 @@
 
 
 import numpy as np
+import math
 import collections
 from collections import Counter
 from typing import Dict
@@ -199,8 +200,11 @@ class QasmSimulator(SimulatesSamples):
         elif isinstance(op.gate, ops.pauli_gates._PauliZ):
             self._sim.z([indices[0]])
         elif isinstance(op.gate, ops.common_gates.HPowGate):
-            mat = np.power([[1,1],[1,-1]], -np.pi * op.gate._exponent)
-            self._sim.matrix_gate([indices[0]], mat)
+            if op.gate._exponent == 1.0:
+                self._sim.h([indices[0]])
+            else :
+                mat = np.power([[1.0/math.sqrt(2.0),1.0/math.sqrt(2.0)],[1.0/math.sqrt(2.0),-1.0/math.sqrt(2.0)]], -np.pi * op.gate._exponent)
+                self._sim.matrix_gate([indices[0]], mat)
         elif isinstance(op.gate, ops.common_gates.XPowGate):
             self._sim.rx([indices[0]], [-np.pi * op.gate._exponent])
         elif isinstance(op.gate, ops.common_gates.YPowGate):
