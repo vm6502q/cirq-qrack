@@ -56,10 +56,10 @@ class TestQrackSimulator(unittest.TestCase):
         self.qubit_n = 5
         self.test_repeat = 4
 
-    def check_result(self, circuit, rtol=1e-9, atol=0):
+    def check_result(self, circuit, indices, rtol=1e-9, atol=0):
         actual = QasmSimulator().run(circuit, repetitions=100)
-        expected = cirq.Simulator().run(circuit, repetitions=100)
-        self.assertEquals(actual.measurements, expected.measurements)
+        expected = cirq.Simulator().run(circuit, repetitions=100).histogram(key=indices)
+        self.assertEquals(actual.measurements, expected)
 
     def check_single_qubit_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -69,7 +69,7 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(gate_op(qubits[index]))
             circuit.append(cirq.ops.measure(qubits[index]))
             # print("flip {}".format(index))
-            self.check_result(circuit)
+            self.check_result(circuit, [index])
 
     def check_single_qubit_rotation_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -79,7 +79,7 @@ class TestQrackSimulator(unittest.TestCase):
             angle = np.random.rand() * np.pi * 2
             circuit.append(gate_op(angle).on(qubits[index]))
             circuit.append(cirq.ops.measure(qubits[index]))
-            self.check_result(circuit)
+            self.check_result(circuit, [index])
 
     def check_two_qubit_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -94,7 +94,7 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(gate_op(qubits[index[0]], qubits[index[1]]))
             circuit.append(cirq.ops.measure(qubits[index[0]]))
             circuit.append(cirq.ops.measure(qubits[index[1]]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def check_two_qubit_rotation_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -111,7 +111,7 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(gate_op_angle(qubits[index[0]], qubits[index[1]]))
             circuit.append(cirq.ops.measure(qubits[index[0]]))
             circuit.append(cirq.ops.measure(qubits[index[1]]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def check_three_qubit_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -127,7 +127,7 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(cirq.ops.measure(qubits[index[0]]))
             circuit.append(cirq.ops.measure(qubits[index[1]]))
             circuit.append(cirq.ops.measure(qubits[index[2]]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def check_three_qubit_rotation_gate(self, gate_op):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -145,7 +145,7 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(cirq.ops.measure(qubits[index[0]]))
             circuit.append(cirq.ops.measure(qubits[index[1]]))
             circuit.append(cirq.ops.measure(qubits[index[2]]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def test_QrackSimulator_Xgate(self):
         self.check_single_qubit_gate(cirq.ops.X)
@@ -242,7 +242,7 @@ class TestQrackSimulator(unittest.TestCase):
             angle = np.random.rand(3) * np.pi * 2
             circuit.append(cirq.circuits.qasm_output.QasmUGate(angle[0], angle[1], angle[2]).on(qubits[index]))
             circuit.append(cirq.ops.measure(qubits[index]))
-            self.check_result(circuit)
+            self.check_result(circuit, [index])
 
     def test_QrackSimulator_SingleQubitMatrixGate(self):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -255,7 +255,7 @@ class TestQrackSimulator(unittest.TestCase):
             mat = unitary_group.rvs(2)
             circuit.append(cirq.MatrixGate(mat).on(qubits[index]))
             circuit.append(cirq.ops.measure(qubits[index]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def test_QrackSimulator_TwoQubitMatrixGate(self):
         qubits = [cirq.LineQubit(i) for i in range(self.qubit_n)]
@@ -268,14 +268,14 @@ class TestQrackSimulator(unittest.TestCase):
             circuit.append(cirq.MatrixGate(mat).on(qubits[index[0]], qubits[index[1]]))
             circuit.append(cirq.ops.measure(qubits[index[0]]))
             circuit.append(cirq.ops.measure(qubits[index[1]]))
-            self.check_result(circuit)
+            self.check_result(circuit, index)
 
     def test_QrackSimulator_QuantumVolume(self):
         qubit_n = 20
         qubits = [cirq.LineQubit(i) for i in range(qubit_n)]
         circuit = cirq.Circuit()
         parse_qasm_to_QrackCircuit('tests/quantum_volume_n10_d8_0_0.qasm', circuit, qubits)
-        self.check_result(circuit)
+        self.check_result(circuit, qubits)
 
 
 if __name__ == "__main__":

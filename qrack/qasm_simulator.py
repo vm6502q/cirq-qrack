@@ -172,7 +172,7 @@ class QasmSimulator(SimulatesSamples):
                 operations = moment.operations
                 for op in operations:
                     indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                    self.__memory.append(hex(int(bin(self._add_qasm_measure(self._sample_qubits)[:2], 2))))
+                    self.__memory.append(int(bin(self._add_qasm_measure(self._sample_qubits)[:2], 2)))
 
                     # if not self._try_gate(op, indices) and protocols.is_measurement(op):
                     #     for index in indices:
@@ -298,7 +298,7 @@ class QasmSimulator(SimulatesSamples):
                 qubit_outcome = (sample >> qubit) & 1
                 classical_state = (classical_state & (~1)) | qubit_outcome
             outKey = bin(classical_state)[2:]
-            memory += [hex(int(outKey, 2))]
+            memory += [int(outKey, 2)]
             self._classical_memory = classical_state
             return memory
 
@@ -313,7 +313,7 @@ class QasmSimulator(SimulatesSamples):
                 qubit_outcome = (sample >> index) & 1
                 classical_state = (classical_state & (~1)) | qubit_outcome
             outKey = bin(classical_state)[2:]
-            memory += value * [hex(int(outKey, 2))]
+            memory += value * [int(outKey, 2)]
 
         return memory
 
