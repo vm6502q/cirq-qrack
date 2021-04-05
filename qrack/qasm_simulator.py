@@ -205,7 +205,7 @@ class QasmSimulator(SimulatesSamples):
                 c = np.cos(np.pi * t / 2.0)
                 s = np.sin(np.pi * t / 2.0)
                 g = np.exp((np.pi * t / 2.0) * (1.0j))
-                mat = [[g * (c - (1.0j) * s / sqrt(2.0)), -(1.0j) * g * s / sqrt(2.0)],[-(1.0j) * g * s / sqrt(2.0)], g * (c + (1.0j) * s / sqrt(2.0))]]
+                mat = [[g * (c - (1.0j) * s / sqrt(2.0)), -(1.0j) * g * s / sqrt(2.0)],[-(1.0j) * g * s / sqrt(2.0), g * (c + (1.0j) * s / sqrt(2.0))]]
                 self._sim.matrix_gate([indices[0]], mat)
         elif isinstance(op.gate, ops.common_gates.XPowGate):
             self._sim.rx([indices[0]], [-np.pi * op.gate._exponent])
