@@ -17,9 +17,8 @@
 
 
 import numpy as np
+import collections
 from collections import Counter
-import logging
-import os
 from typing import Dict
 from .qrack_controller_wrapper import qrack_controller_factory
 
@@ -126,8 +125,6 @@ class QasmSimulator(SimulatesSamples):
         qid_shape = protocols.qid_shape(qubits)
         qubit_map = {q: i for i, q in enumerate(qubits)}
 
-        is_unitary_preamble = False
-
         self._sample_measure = True
         self._sim = qrack_controller_factory()
         self._sim.initialize_qreg(self._configuration['opencl'],
@@ -152,17 +149,44 @@ class QasmSimulator(SimulatesSamples):
             self.__memory = self._add_sample_measure(indices, repetitions)
             return dict(Counter(self.__memory))
 
+            # results = {}
+            # repetition = 0
+            # for sample in self.__memory:
+            #     results[str(repetition)] = []
+            #     result = int(sample[2:])
+            #     for qubit in indices:
+            #         results[str(repetition)].append(1 if (result >> qubit) & 1 else 0)
+            #     repetition = repetition + 1
+
+            # return results
+
         self._sample_measure = False
+        preamble_sim = self._sim
 
+        # register_address = 0
+        # address_to_key = {}
+        # measurement_results = {}
         for shot in range(repetitions):
-            loopSuffix = general_suffix
             self._sim = preamble_sim.clone()
-
             for moment in general_suffix:
                 operations = moment.operations
                 for op in operations:
                     indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                    self._try_gate(op, indices)
+                    self.__memory.append(hex(int(bin(self._add_qasm_measure(self._sample_qubits)[:2], 2))))
+
+                    # if not self._try_gate(op, indices) and protocols.is_measurement(op):
+                    #     for index in indices:
+                    #         address_to_key[register_address] = protocols.measurement_key(op.gate)
+                    #         measurement_results[register_address] = self._add_qasm_measure([[index]])
+                    #         register_address += 1
+
+        # measurements = collections.defaultdict(list)
+        # for register_index in range(register_address):
+        #     key = address_to_key[register_index]
+        #     value = measurement_results[register_index]
+        #     measurements[key].append(value)
+
+        # return measurements
 
         return dict(Counter(self.__memory))
         
@@ -280,7 +304,7 @@ class QasmSimulator(SimulatesSamples):
 
         # Sample and convert to bit-strings
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
-        classical_state = self._classical_memory
+        classical_state = 0
         for key, value in measure_results.items():
             sample = key
             classical_state = self._classical_memory
@@ -292,3 +316,21 @@ class QasmSimulator(SimulatesSamples):
             memory += value * [hex(int(outKey, 2))]
 
         return memory
+
+    def _add_qasm_measure(self, sample_qubits):
+        """Apply a measure instruction to a qubit.
+        Args:
+            qubit (int): qubit is the qubit measured.
+            cmembit (int): is the classical memory bit to store outcome in.
+            cregbit (int, optional): is the classical register bit to store outcome in.
+        """
+
+        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
+
+        sample = self._sim.measure(measure_qubit)
+        classical_state = 0
+        for index in range(len(measure_qubit)):
+            qubit = measure_qubit[index]
+            qubit_outcome = (sample >> qubit) & 1
+            classical_state = (classical_state & (~1)) | qubit_outcome
+        return classical_state
