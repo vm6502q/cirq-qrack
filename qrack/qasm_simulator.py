@@ -96,8 +96,8 @@ class QasmSimulator(SimulatesSamples):
     def __init__(self,
                  configuration=None):
         self._configuration = configuration or self.DEFAULT_CONFIGURATION
-        self._memory = []
         self._number_of_qubits = None
+        self._memory = collections.defaultdict(list)
         self._results = {}
         self._shots = {}
         self._local_random = np.random.RandomState()
@@ -142,10 +142,22 @@ class QasmSimulator(SimulatesSamples):
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
                 self._try_gate(op, indices)
 
-        general_ops = list(general_suffix.all_operations())
-        if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
-            indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-            return self._add_sample_measure(indices, repetitions)
+        # general_ops = list(general_suffix.all_operations())
+        # if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
+        #     indices = []
+        #     for op in general_ops:
+        #         indices = indices + [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+        #     sample_measure = self._add_sample_measure(indices, repetitions)
+        #     for sample in sample_measure:
+        #         qb_index = 0
+        #         for op in general_ops:
+        #             key = protocols.measurement_key(op.gate)
+        #             value = []
+        #             for _ in op.qubits:
+        #                 value.append(sample[qb_index])
+        #                 qb_index = qb_index + 1
+        #             self._memory[key].append(value)
+        #     return self._memory
 
         self._sample_measure = False
         preamble_sim = self._sim
@@ -262,16 +274,15 @@ class QasmSimulator(SimulatesSamples):
         Returns:
             list: A list of memory values.
         """
-        memory = []
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
             key = self._sim.measure(measure_qubit)
-            memory = value * [self._int_to_bits(key)]
-            return memory
+            return [self._int_to_bits(key)]
 
         # Sample and convert to bit-strings
+        memory = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
         for key, value in measure_results.items():
             memory += value * [self._int_to_bits(int(key))]
