@@ -204,7 +204,7 @@ class QasmSimulator(SimulatesSamples):
             lmda = op.gate.lmda
             theta = op.gate.theta
             phi = op.gate.phi
-            self._sim.u([indices[0]], [lmda, theta, phi])
+            self._sim.u([indices[0]], [theta * np.pi, phi * np.pi, lmda * np.pi])
 
         # Two qubit gate
         elif isinstance(op.gate, ops.common_gates.CNotPowGate):
