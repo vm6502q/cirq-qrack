@@ -298,7 +298,7 @@ class QasmSimulator(SimulatesSamples):
         """
 
         key = self._sim.measure(measure_qubit)
-        return [self._int_to_bits(int(key))]
+        return self._int_to_bits(int(key))
 
     def _int_to_bits(self, i):
         bits = []
