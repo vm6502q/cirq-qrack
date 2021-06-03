@@ -66,7 +66,7 @@ class TestQasmSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             circuit.append(gate_op(qubits[index]))
             # print("flip {}".format(index))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def check_single_qubit_rotation_gate(self, gate_op):
@@ -76,7 +76,7 @@ class TestQasmSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             angle = np.random.rand() * np.pi * 2
             circuit.append(gate_op(angle).on(qubits[index]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def check_two_qubit_gate(self, gate_op):
@@ -90,7 +90,7 @@ class TestQasmSimulator(unittest.TestCase):
             np.random.shuffle(all_indices)
             index = all_indices[:2]
             circuit.append(gate_op(qubits[index[0]], qubits[index[1]]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def check_two_qubit_rotation_gate(self, gate_op):
@@ -106,7 +106,7 @@ class TestQasmSimulator(unittest.TestCase):
             angle = np.random.rand() * np.pi * 2
             gate_op_angle = gate_op(exponent=angle)
             circuit.append(gate_op_angle(qubits[index[0]], qubits[index[1]]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def check_three_qubit_gate(self, gate_op):
@@ -120,7 +120,7 @@ class TestQasmSimulator(unittest.TestCase):
             np.random.shuffle(all_indices)
             index = all_indices[:3]
             circuit.append(gate_op(qubits[index[0]], qubits[index[1]], qubits[index[2]]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def check_three_qubit_rotation_gate(self, gate_op):
@@ -136,7 +136,7 @@ class TestQasmSimulator(unittest.TestCase):
             angle = np.random.rand() * np.pi * 2
             gate_op_angle = gate_op(exponent=angle)
             circuit.append(gate_op_angle(qubits[index[0]], qubits[index[1]], qubits[index[2]]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def test_QasmSimulator_Xgate(self):
@@ -233,7 +233,7 @@ class TestQasmSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             angle = np.random.rand(3) * np.pi * 2
             circuit.append(cirq.circuits.qasm_output.QasmUGate(angle[0], angle[1], angle[2]).on(qubits[index]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def test_QasmSimulator_SingleQubitMatrixGate(self):
@@ -246,7 +246,7 @@ class TestQasmSimulator(unittest.TestCase):
             index = np.random.randint(self.qubit_n)
             mat = unitary_group.rvs(2)
             circuit.append(cirq.MatrixGate(mat).on(qubits[index]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def test_QasmSimulator_TwoQubitMatrixGate(self):
@@ -258,7 +258,7 @@ class TestQasmSimulator(unittest.TestCase):
             index = all_indices[:2]
             mat = unitary_group.rvs(4)
             circuit.append(cirq.MatrixGate(mat).on(qubits[index[0]], qubits[index[1]]))
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
     def test_QasmSimulator_QuantumVolume(self):
@@ -266,7 +266,7 @@ class TestQasmSimulator(unittest.TestCase):
         qubits = [cirq.LineQubit(i) for i in range(qubit_n)]
         circuit = cirq.Circuit()
         parse_qasm_to_QrackCircuit('tests/quantum_volume_n10_d8_0_0.qasm', circuit, qubits)
-        circuit.append(cirq.ops.measure([qubits[b] for b in range(self.qubit_n)], "measure_all"))
+        circuit.append(cirq.ops.measure(qubits, "measure_all"))
         self.check_result(circuit)
 
 
