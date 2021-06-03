@@ -17,6 +17,7 @@
 
 
 import numpy as np
+import scipy as sp
 import collections
 from typing import Dict
 from .qrack_controller_wrapper import qrack_controller_factory
@@ -142,22 +143,22 @@ class QasmSimulator(SimulatesSamples):
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
                 self._try_gate(op, indices)
 
-        # general_ops = list(general_suffix.all_operations())
-        # if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
-        #     indices = []
-        #     for op in general_ops:
-        #         indices = indices + [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-        #     sample_measure = self._add_sample_measure(indices, repetitions)
-        #     for sample in sample_measure:
-        #         qb_index = 0
-        #         for op in general_ops:
-        #             key = protocols.measurement_key(op.gate)
-        #             value = []
-        #             for _ in op.qubits:
-        #                 value.append(sample[qb_index])
-        #                 qb_index = qb_index + 1
-        #             self._memory[key].append(value)
-        #     return self._memory
+        general_ops = list(general_suffix.all_operations())
+        if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
+            indices = []
+            for op in general_ops:
+                indices = indices + [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+            sample_measure = self._add_sample_measure(indices, repetitions)
+            for sample in sample_measure:
+                qb_index = 0
+                for op in general_ops:
+                    key = protocols.measurement_key(op.gate)
+                    value = []
+                    for _ in op.qubits:
+                        value.append(sample[qb_index])
+                        qb_index = qb_index + 1
+                    self._memory[key].append(value)
+            return self._memory
 
         self._sample_measure = False
         preamble_sim = self._sim
@@ -210,13 +211,13 @@ class QasmSimulator(SimulatesSamples):
             if op.gate._exponent == 1.0:
                 self._sim.cx([indices[0], indices[1]])
             else:
-                mat = np.power([[0.0 + 0.0j, 1.0 + 0.0j], [1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
+                mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j], [1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
                 self._sim.ctrld_matrix_gate(indices, mat)
         elif isinstance(op.gate, ops.common_gates.CZPowGate):
             if op.gate._exponent == 1.0:
                 self._sim.cz([indices[0], indices[1]])
             else:
-                mat = np.power([[1.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, -1.0 + 0.0j]], -np.pi * op.gate._exponent)
+                mat = sp.linalg.fractional_matrix_power([[1.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, -1.0 + 0.0j]], -np.pi * op.gate._exponent)
                 self._sim.ctrld_matrix_gate(indices, mat)
         elif isinstance(op.gate, ops.common_gates.SwapPowGate):
             if op.gate._exponent == 1.0:
@@ -242,13 +243,13 @@ class QasmSimulator(SimulatesSamples):
             if op.gate._exponent == 1.0:
                 self._sim.cx([indices[0], indices[1], indices[2]])
             else:
-                mat = np.power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
+                mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
                 self._sim.ctrld_matrix_gate([indices[0], indices[1], indices[2]], mat)
         elif isinstance(op.gate, ops.three_qubit_gates.CCZPowGate):
             if op.gate._exponent == 1.0:
                 self._sim.cz([indices[0], indices[1], indices[2]])
             else:
-                mat = np.power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
+                mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
                 self._sim.ctrld_matrix_gate([indices[0], indices[1], indices[2]], mat)
         elif isinstance(op.gate, ops.three_qubit_gates.CSwapGate):
             self._sim.cswap(indices)
@@ -279,13 +280,13 @@ class QasmSimulator(SimulatesSamples):
         # without passing back the probabilities.
         if num_samples == 1:
             key = self._sim.measure(measure_qubit)
-            return [self._int_to_bits(key)]
+            return [self._int_to_bits(key, len(measure_qubit))]
 
         # Sample and convert to bit-strings
         memory = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
         for key, value in measure_results.items():
-            memory += value * [self._int_to_bits(int(key))]
+            memory += value * [self._int_to_bits(int(key), len(measure_qubit))]
 
         return memory
 
@@ -298,11 +299,11 @@ class QasmSimulator(SimulatesSamples):
         """
 
         key = self._sim.measure(measure_qubit)
-        return self._int_to_bits(int(key))
+        return self._int_to_bits(int(key), len(measure_qubit))
 
-    def _int_to_bits(self, i):
+    def _int_to_bits(self, i, len):
         bits = []
-        while i:
+        for _ in range(len):
             bits.append(i & 1)
             i = i >> 1
         return bits
