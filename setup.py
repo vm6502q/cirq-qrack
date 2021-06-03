@@ -33,7 +33,7 @@ class get_opencl_library(object):
             return 'm'
 
 qrack_extension = [Extension(
-                       'Cirq.qrack.qrack_controller_wrapper',
+                       'qrack.qrack_controller_wrapper',
                        ['qrack/wrappers/qrack_controller_wrapper.pyx'],
                        include_dirs=[],
                        libraries=['qrack', str(get_opencl_library())],

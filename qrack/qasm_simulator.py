@@ -18,7 +18,6 @@
 
 import numpy as np
 import collections
-from collections import Counter
 from typing import Dict
 from .qrack_controller_wrapper import qrack_controller_factory
 
@@ -147,7 +146,7 @@ class QasmSimulator(SimulatesSamples):
         if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
             indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
             self._memory = self._add_sample_measure(indices, repetitions)
-            return dict(Counter(self._memory))
+            return self._memory
 
             # results = {}
             # repetition = 0
@@ -188,7 +187,7 @@ class QasmSimulator(SimulatesSamples):
 
         # return measurements
 
-        return dict(Counter(self._memory))
+        return self._memory
         
     def _try_gate(self, op: ops.GateOperation, indices: np.array):
         # One qubit gate
@@ -297,13 +296,13 @@ class QasmSimulator(SimulatesSamples):
         # without passing back the probabilities.
         if num_samples == 1:
             key = self._sim.measure(measure_qubit)
-            memory = value * [key]
+            memory = value * [self._int_to_bits(key)]
             return memory
 
         # Sample and convert to bit-strings
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
         for key, value in measure_results.items():
-            memory += value * [int(key)]
+            memory += value * [self._int_to_bits(int(key))]
 
         return memory
 
@@ -316,4 +315,11 @@ class QasmSimulator(SimulatesSamples):
         """
 
         key = self._sim.measure(measure_qubit)
-        return [int(key)]
+        return [self._int_to_bits(int(key))]
+
+    def _int_to_bits(self, i):
+        bits = []
+        while i:
+            bits.append(i & 1)
+            i = i >> 1
+        return bits
