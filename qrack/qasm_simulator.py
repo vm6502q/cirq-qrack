@@ -105,7 +105,7 @@ class QasmSimulator(SimulatesSamples):
     def _run(
         self, circuit: circuits.Circuit, param_resolver: study.ParamResolver, repetitions: int
     ) -> Dict[str, np.ndarray]:
-        """See definition in `cirq.SimulatesSamples`."""
+        """Run a simulation, mimicking quantum hardware."""
         param_resolver = param_resolver or study.ParamResolver({})
         resolved_circuit = protocols.resolve_parameters(circuit, param_resolver)
         check_all_resolved(resolved_circuit)
@@ -145,47 +145,19 @@ class QasmSimulator(SimulatesSamples):
         general_ops = list(general_suffix.all_operations())
         if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
             indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-            self._memory = self._add_sample_measure(indices, repetitions)
-            return self._memory
-
-            # results = {}
-            # repetition = 0
-            # for sample in self._memory:
-            #     results[str(repetition)] = []
-            #     result = int(sample[2:])
-            #     for qubit in indices:
-            #         results[str(repetition)].append(1 if (result >> qubit) & 1 else 0)
-            #     repetition = repetition + 1
-
-            # return results
+            return self._add_sample_measure(indices, repetitions)
 
         self._sample_measure = False
         preamble_sim = self._sim
 
-        # register_address = 0
-        # address_to_key = {}
-        # measurement_results = {}
         for shot in range(repetitions):
             self._sim = preamble_sim.clone()
             for moment in general_suffix:
                 operations = moment.operations
                 for op in operations:
                     indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                    self._memory.append(self._add_qasm_measure(indices))
-
-                    # if not self._try_gate(op, indices) and protocols.is_measurement(op):
-                    #     for index in indices:
-                    #         address_to_key[register_address] = protocols.measurement_key(op.gate)
-                    #         measurement_results[register_address] = self._add_qasm_measure([[index]])
-                    #         register_address += 1
-
-        # measurements = collections.defaultdict(list)
-        # for register_index in range(register_address):
-        #     key = address_to_key[register_index]
-        #     value = measurement_results[register_index]
-        #     measurements[key].append(value)
-
-        # return measurements
+                    key = protocols.measurement_key(op.gate)
+                    self._memory[key].append(self._add_qasm_measure(indices))
 
         return self._memory
         
