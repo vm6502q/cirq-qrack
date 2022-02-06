@@ -20,7 +20,7 @@ import numpy as np
 import scipy as sp
 import collections
 from typing import Dict
-from .qrack_controller_wrapper import qrack_controller_factory
+from pyqrack import QrackSimulator, Pauli
 
 from cirq import circuits, ops, protocols, study
 from cirq.sim import SimulatesSamples
@@ -74,23 +74,24 @@ class QasmSimulator(SimulatesSamples):
         'backend_version': '5.4.0',
         'n_qubits': 64,
         'conditional': True,
-        'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
+        'url': 'https://github.com/vm6502q/cirq-qrack',
         'simulator': True,
         'local': True,
         'conditional': False,
         'open_pulse': False,
         'memory': True,
         'max_shots': 65536,
-        'description': 'An OpenCL based qasm simulator',
+        'description': 'An Schmidt-decomposed, OpenCL-based QASM simulator',
         'coupling_map': None,
-        'normalize': True,
-        'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,
         'stabilizer': True,
+        'qbdt': False,
         'opencl': True,
-        'opencl_device_id': -1,
-        'opencl_multi': False
+        'opencl_multi': True,
+        'mask_fusion_1qb': True,
+        'hybrid_opencl': True,
+        'host_pointer': False
     }
 
     # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
@@ -126,16 +127,16 @@ class QasmSimulator(SimulatesSamples):
         qubit_map = {q: i for i, q in enumerate(qubits)}
 
         self._sample_measure = True
-        self._sim = qrack_controller_factory()
-        self._sim.initialize_qreg(self._configuration['opencl'],
-                                  self._configuration['schmidt_decompose'],
-                                  self._configuration['paging'],
-                                  self._configuration['stabilizer'],
-                                  self._number_of_qubits,
-                                  self._configuration['opencl_device_id'],
-                                  self._configuration['opencl_multi'],
-                                  self._configuration['normalize'],
-                                  self._configuration['zero_threshold'])
+        self._sim = QrackSimulator(self._number_of_qubits,
+                                   isSchmidtDecomposeMulti=self._configuration['opencl_multi'],
+                                   isSchmidtDecompose=self._configuration['schmidt_decompose'],
+                                   isStabilizerHybrid=self._configuration['stabilizer'],
+                                   isBinaryDecisionTree=self._configuration['qbdt'],
+                                   isPaged=self._configuration['paging'],
+                                   is1QbFusion=self._configuration['mask_fusion_1qb'],
+                                   isCpuGpuHybrid=self._configuration['hybrid_opencl'],
+                                   isOpenCL=self._configuration['opencl'],
+                                   isHostPointer=self._configuration['host_pointer'])
 
         for moment in unitary_prefix:
             operations = moment.operations
@@ -177,48 +178,48 @@ class QasmSimulator(SimulatesSamples):
     def _try_gate(self, op: ops.GateOperation, indices: np.array):
         # One qubit gate
         if isinstance(op.gate, ops.pauli_gates._PauliX):
-            self._sim.x([indices[0]])
+            self._sim.x(indices[0])
         elif isinstance(op.gate, ops.pauli_gates._PauliY):
-            self._sim.y([indices[0]])
+            self._sim.y(indices[0])
         elif isinstance(op.gate, ops.pauli_gates._PauliZ):
-            self._sim.z([indices[0]])
+            self._sim.z(indices[0])
         elif isinstance(op.gate, ops.common_gates.HPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.h([indices[0]])
+                self._sim.h(indices[0])
             else :
                 c = np.cos(np.pi * t / 2.0)
                 s = np.sin(np.pi * t / 2.0)
                 g = np.exp((np.pi * t / 2.0) * (1.0j))
-                mat = [[g * (c - (1.0j) * s / sqrt(2.0)), -(1.0j) * g * s / sqrt(2.0)],[-(1.0j) * g * s / sqrt(2.0), g * (c + (1.0j) * s / sqrt(2.0))]]
-                self._sim.matrix_gate([indices[0]], mat)
+                mat = [g * (c - (1.0j) * s / sqrt(2.0)), -(1.0j) * g * s / sqrt(2.0), -(1.0j) * g * s / sqrt(2.0), g * (c + (1.0j) * s / sqrt(2.0))]
+                self._sim.mtrx(mat, indices[0])
         elif isinstance(op.gate, ops.common_gates.XPowGate):
-            self._sim.rx([indices[0]], [-np.pi * op.gate._exponent])
+            self._sim.r(Pauli.PauliX, -np.pi * op.gate._exponent, indices[0])
         elif isinstance(op.gate, ops.common_gates.YPowGate):
-            self._sim.ry([indices[0]], [-np.pi * op.gate._exponent])
+            self._sim.r(Pauli.PauliY, -np.pi * op.gate._exponent, indices[0])
         elif isinstance(op.gate, ops.common_gates.ZPowGate):
-            self._sim.rz([indices[0]], [-np.pi * op.gate._exponent])
+            self._sim.r(Pauli.PauliZ, -np.pi * op.gate._exponent, indices[0])
         elif (len(indices) == 1 and isinstance(op.gate, ops.matrix_gates.MatrixGate)):
             mat = op.gate._matrix
-            self._sim.matrix_gate([indices[0]], mat)
+            self._sim.mtrx(mat, indices[0])
         elif isinstance(op.gate, circuits.qasm_output.QasmUGate):
             lmda = op.gate.lmda
             theta = op.gate.theta
             phi = op.gate.phi
-            self._sim.u([indices[0]], [theta * np.pi, phi * np.pi, lmda * np.pi])
+            self._sim.u(indices[0], theta * np.pi, phi * np.pi, lmda * np.pi)
 
         # Two qubit gate
         elif isinstance(op.gate, ops.common_gates.CNotPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.cx([indices[0], indices[1]])
+                self._sim.mcx(indices[0:1], indices[1])
             else:
                 mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j], [1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
-                self._sim.ctrld_matrix_gate(indices, mat)
+                self._sim.mcmtrx(indices[0:1], [item for sublist in mat for item in sublist], indices[1])
         elif isinstance(op.gate, ops.common_gates.CZPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.cz([indices[0], indices[1]])
+                self._sim.mcz(indices[0:1], indices[1])
             else:
                 mat = sp.linalg.fractional_matrix_power([[1.0 + 0.0j, 0.0 + 0.0j], [0.0 + 0.0j, -1.0 + 0.0j]], -np.pi * op.gate._exponent)
-                self._sim.ctrld_matrix_gate(indices, mat)
+                self._sim.mcmtrx(indices[0:1], [item for sublist in mat for item in sublist], indices[1])
         elif isinstance(op.gate, ops.common_gates.SwapPowGate):
             if op.gate._exponent == 1.0:
                 self._sim.swap(indices[0], indices[1])
@@ -241,18 +242,18 @@ class QasmSimulator(SimulatesSamples):
         # Three qubit gate
         elif isinstance(op.gate, ops.three_qubit_gates.CCXPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.cx([indices[0], indices[1], indices[2]])
+                self._sim.mcx(indices[0:2], indices[2])
             else:
                 mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
-                self._sim.ctrld_matrix_gate([indices[0], indices[1], indices[2]], mat)
+                self._sim.mcmtrx(indices[0:2], [item for sublist in mat for item in sublist], indices[2])
         elif isinstance(op.gate, ops.three_qubit_gates.CCZPowGate):
             if op.gate._exponent == 1.0:
-                self._sim.cz([indices[0], indices[1], indices[2]])
+                self._sim.mcz(indices[0:2], indices[2])
             else:
                 mat = sp.linalg.fractional_matrix_power([[0.0 + 0.0j, 1.0 + 0.0j],[1.0 + 0.0j, 0.0 + 0.0j]], -np.pi * op.gate._exponent)
-                self._sim.ctrld_matrix_gate([indices[0], indices[1], indices[2]], mat)
+                self._sim.mcmtrx(indices[0:2], [item for sublist in mat for item in sublist], indices[2])
         elif isinstance(op.gate, ops.three_qubit_gates.CSwapGate):
-            self._sim.cswap(indices)
+            self._sim.cswap(indices[0:1], indices[1], indices[2])
 
         # Misc
         #elif protocols.has_unitary(op):
@@ -279,14 +280,14 @@ class QasmSimulator(SimulatesSamples):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            key = self._sim.measure(measure_qubit)
+            key = self._sim.m(measure_qubit)
             return [self._int_to_bits(key, len(measure_qubit))]
 
         # Sample and convert to bit-strings
         memory = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
-        for key, value in measure_results.items():
-            memory += value * [self._int_to_bits(int(key), len(measure_qubit))]
+        for value in measure_results:
+            memory += [self._int_to_bits(int(value), len(measure_qubit))]
 
         return memory
 
@@ -298,7 +299,7 @@ class QasmSimulator(SimulatesSamples):
             int: Memory values.
         """
 
-        key = self._sim.measure(measure_qubit)
+        key = self._sim.m(measure_qubit)
         return self._int_to_bits(int(key), len(measure_qubit))
 
     def _int_to_bits(self, i, len):

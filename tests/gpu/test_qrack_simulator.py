@@ -57,7 +57,7 @@ class TestQasmSimulator(unittest.TestCase):
     def check_result(self, circuit, rtol=1e-9, atol=0, dtype=np.complex128):
         actual = QasmSimulator().run(circuit, repetitions=100).histogram(key="measure_all")
         expected = cirq.Simulator(dtype=dtype).run(circuit, repetitions=100).histogram(key="measure_all")
-        self.assertEquals(actual, expected)
+        self.assertEqual(actual, expected)
 
     def check_single_qubit_gate(self, gate_op):
         qubits = cirq.LineQubit.range(self.qubit_n)
