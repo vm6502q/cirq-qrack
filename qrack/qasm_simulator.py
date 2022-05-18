@@ -89,7 +89,7 @@ class QasmSimulator(SimulatesSamples):
         'qbdt': False,
         'opencl': True,
         'opencl_multi': True,
-        'mask_fusion_1qb': True,
+        'mask_fusion_1qb': False,
         'hybrid_opencl': True,
         'host_pointer': False
     }
