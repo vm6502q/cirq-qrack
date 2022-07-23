@@ -153,12 +153,18 @@ class QasmSimulator(SimulatesSamples):
             for sample in sample_measure:
                 qb_index = 0
                 for op in general_ops:
-                    key = protocols.measurement_key(op.gate)
+                    key = protocols.measurement_key_name(op.gate)
                     value = []
                     for _ in op.qubits:
                         value.append(sample[qb_index])
                         qb_index = qb_index + 1
-                    self._memory[key].append(value)
+                    self._memory[key].append(np.asarray([value]))
+
+            __memory = {}
+            for key, value in self._memory.items():
+                __memory[key] = np.asarray(value)
+            self._memory = __memory
+
             return self._memory
 
         self._sample_measure = False
@@ -170,8 +176,13 @@ class QasmSimulator(SimulatesSamples):
                 operations = moment.operations
                 for op in operations:
                     indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                    key = protocols.measurement_key(op.gate)
-                    self._memory[key].append(self._add_qasm_measure(indices))
+                    key = protocols.measurement_key_name(op.gate)
+                    self._memory[key].append(np.asarray([self._add_qasm_measure(indices)]))
+
+        __memory = {}
+        for key, value in self._memory.items():
+            __memory[key] = np.asarray(value)
+        self._memory = __memory
 
         return self._memory
         
@@ -281,7 +292,7 @@ class QasmSimulator(SimulatesSamples):
         # without passing back the probabilities.
         if num_samples == 1:
             key = self._sim.m(measure_qubit)
-            return [self._int_to_bits(key, len(measure_qubit))]
+            return np.asarray([self._int_to_bits(key, len(measure_qubit))])
 
         # Sample and convert to bit-strings
         memory = []
@@ -289,7 +300,7 @@ class QasmSimulator(SimulatesSamples):
         for value in measure_results:
             memory += [self._int_to_bits(int(value), len(measure_qubit))]
 
-        return memory
+        return np.asarray(memory)
 
     def _add_qasm_measure(self, measure_qubit):
         """Apply a measure instruction to a qubit.
