@@ -22,6 +22,7 @@ import collections
 from typing import Dict
 from pyqrack import QrackSimulator, Pauli
 
+import cirq
 from cirq import circuits, ops, protocols, study
 from cirq.sim import SimulatesSamples
 from cirq.sim.simulator import check_all_resolved, split_into_matching_protocol_then_general
@@ -142,7 +143,8 @@ class QasmSimulator(SimulatesSamples):
             operations = moment.operations
             for op in operations:
                 indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                self._try_gate(op, indices)
+                if not self._try_gate(op, indices):
+                    raise RuntimeError("Qrack can't perform your gate: " + str(op))
 
         general_ops = list(general_suffix.all_operations())
         if all(isinstance(op.gate, ops.MeasurementGate) for op in general_ops):
@@ -209,6 +211,9 @@ class QasmSimulator(SimulatesSamples):
             self._sim.r(Pauli.PauliY, -np.pi * op.gate._exponent, indices[0])
         elif isinstance(op.gate, ops.common_gates.ZPowGate):
             self._sim.r(Pauli.PauliZ, -np.pi * op.gate._exponent, indices[0])
+        elif isinstance(op.gate, ops.PhasedXPowGate):
+            mat = cirq.unitary(op.gate)
+            self._sim.mtrx([item for sublist in mat for item in sublist], indices[0])
         elif (len(indices) == 1 and isinstance(op.gate, ops.matrix_gates.MatrixGate)):
             mat = op.gate._matrix
             self._sim.mtrx(mat, indices[0])
@@ -238,6 +243,10 @@ class QasmSimulator(SimulatesSamples):
                 self._sim.sqrtswap(indices[0], indices[1])
             else:
                 return False
+        elif isinstance(op.gate, ops.FSimGate):
+            theta = op.gate.theta
+            phi = op.gate.phi
+            self._sim.fsim(theta, phi, indices[0], indices[1])
         #TODO:
         #elif isinstance(op.gate, ops.parity_gates.XXPowGate):
         #    qulacs_circuit.add_multi_Pauli_rotation_gate(indices, [1, 1], -np.pi * op.gate._exponent)
