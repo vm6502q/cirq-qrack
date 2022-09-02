@@ -291,7 +291,10 @@ class QasmSimulator(SimulatesSamples):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            key = self._sim.m(measure_qubit)
+            key = 0
+            for i in range(len(measure_qubit)):
+                if self._sim.m(measure_qubit[i]):
+                    key = key | (1 << i)
             return np.asarray([self._int_to_bits(key, len(measure_qubit))])
 
         # Sample and convert to bit-strings
