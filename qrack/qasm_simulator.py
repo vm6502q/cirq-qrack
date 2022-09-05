@@ -90,7 +90,6 @@ class QasmSimulator(SimulatesSamples):
         'qbdt': False,
         'opencl': True,
         'opencl_multi': True,
-        'mask_fusion_1qb': False,
         'hybrid_opencl': True,
         'host_pointer': False
     }
@@ -134,7 +133,6 @@ class QasmSimulator(SimulatesSamples):
                                    isStabilizerHybrid=self._configuration['stabilizer'],
                                    isBinaryDecisionTree=self._configuration['qbdt'],
                                    isPaged=self._configuration['paging'],
-                                   is1QbFusion=self._configuration['mask_fusion_1qb'],
                                    isCpuGpuHybrid=self._configuration['hybrid_opencl'],
                                    isOpenCL=self._configuration['opencl'],
                                    isHostPointer=self._configuration['host_pointer'])
