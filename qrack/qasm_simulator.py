@@ -89,7 +89,7 @@ class QasmSimulator(SimulatesSamples):
         'stabilizer': True,
         'qbdt': False,
         'opencl': True,
-        'opencl_multi': True,
+        'opencl_multi': False,
         'hybrid_opencl': True,
         'host_pointer': False
     }
@@ -242,6 +242,7 @@ class QasmSimulator(SimulatesSamples):
             else:
                 return False
         elif isinstance(op.gate, ops.FSimGate):
+            self._sim.try_separate_2qb(indices[0], indices[1])
             theta = op.gate.theta
             phi = op.gate.phi
             self._sim.fsim(theta, phi, indices[0], indices[1])
