@@ -216,10 +216,7 @@ class QasmSimulator(SimulatesSamples):
             mat = op.gate._matrix
             self._sim.mtrx(mat, indices[0])
         elif isinstance(op.gate, circuits.qasm_output.QasmUGate):
-            lmda = op.gate.lmda
-            theta = op.gate.theta
-            phi = op.gate.phi
-            self._sim.u(indices[0], theta * np.pi, phi * np.pi, lmda * np.pi)
+            self._sim.u(indices[0], op.gate.theta * np.pi, op.gate.phi * np.pi, op.gate.lmda * np.pi)
 
         # Two qubit gate
         elif isinstance(op.gate, ops.common_gates.CNotPowGate):
@@ -243,9 +240,7 @@ class QasmSimulator(SimulatesSamples):
                 return False
         elif isinstance(op.gate, ops.FSimGate):
             self._sim.try_separate_2qb(indices[0], indices[1])
-            theta = op.gate.theta
-            phi = op.gate.phi
-            self._sim.fsim(theta, phi, indices[0], indices[1])
+            self._sim.fsim(op.gate.theta, op.gate.phi, indices[0], indices[1])
         #TODO:
         #elif isinstance(op.gate, ops.parity_gates.XXPowGate):
         #    qulacs_circuit.add_multi_Pauli_rotation_gate(indices, [1, 1], -np.pi * op.gate._exponent)
@@ -299,11 +294,13 @@ class QasmSimulator(SimulatesSamples):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            key = 0
-            for i in range(len(measure_qubit)):
-                if self._sim.m(measure_qubit[i]):
-                    key = key | (1 << i)
-            return np.asarray([self._int_to_bits(key, len(measure_qubit))])
+            sample = self._sim.m_all()
+            result = 0
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                qubit_outcome = (sample >> qubit) & 1
+                result |= qubit_outcome << index
+            return np.asarray([self._int_to_bits(result, len(measure_qubit))])
 
         # Sample and convert to bit-strings
         memory = []
