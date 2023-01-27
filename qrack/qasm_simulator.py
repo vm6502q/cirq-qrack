@@ -238,6 +238,13 @@ class QasmSimulator(SimulatesSamples):
                 self._sim.sqrtswap(indices[0], indices[1])
             else:
                 return False
+        elif isinstance(op.gate, ops.common_gates.ISwapPowGate):
+            if op.gate._exponent == 1.0:
+                self._sim.iswap(indices[0], indices[1])
+            elif op.gate._exponent == -1.0:
+                self._sim.adjiswap(indices[0], indices[1])
+            else:
+                return False
         elif isinstance(op.gate, ops.FSimGate):
             self._sim.try_separate_2qb(indices[0], indices[1])
             self._sim.fsim(op.gate.theta, op.gate.phi, indices[0], indices[1])
