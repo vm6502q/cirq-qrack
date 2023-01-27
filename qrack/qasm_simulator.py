@@ -248,6 +248,7 @@ class QasmSimulator(SimulatesSamples):
         elif isinstance(op.gate, ops.FSimGate):
             self._sim.try_separate_2qb(indices[0], indices[1])
             self._sim.fsim(op.gate.theta, op.gate.phi, indices[0], indices[1])
+            self._sim.try_separate_2qb(indices[0], indices[1])
         #TODO:
         #elif isinstance(op.gate, ops.parity_gates.XXPowGate):
         #    qulacs_circuit.add_multi_Pauli_rotation_gate(indices, [1, 1], -np.pi * op.gate._exponent)
