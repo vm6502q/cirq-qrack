@@ -19,7 +19,10 @@
 import numpy as np
 import scipy as sp
 import collections
-from typing import Dict
+from typing import (
+    Dict,
+    Iterator
+)
 from pyqrack import QrackSimulator, Pauli
 
 import cirq
@@ -104,6 +107,40 @@ class QasmSimulator(SimulatesSamples):
         self._shots = {}
         self._local_random = np.random.RandomState()
 
+    def run_sweep_iter(
+        self, program: 'cirq.AbstractCircuit', params: 'cirq.Sweepable', repetitions: int = 1
+    ) -> Iterator['cirq.Result']:
+        """Runs the supplied Circuit, mimicking quantum hardware.
+
+        In contrast to run, this allows for sweeping over different parameter
+        values.
+
+        Args:
+            program: The circuit to simulate.
+            params: Parameters to run with the program.
+            repetitions: The number of repetitions to simulate.
+
+        Returns:
+            Result list for this run; one for each possible parameter
+            resolver.
+
+        Raises:
+            ValueError: If the circuit has no measurements.
+        """
+        if not program.has_measurements():
+            raise ValueError("Circuit has no measurements to sample.")
+
+        for param_resolver in study.to_resolvers(params):
+            records = {}
+            if repetitions == 0:
+                for _, op, _ in program.findall_operations_with_gate_type(ops.MeasurementGate):
+                    records[protocols.measurement_key_name(op)] = np.empty([0, 1, 1])
+            else:
+                measurements = self._run(
+                    circuit=program, param_resolver=param_resolver, repetitions=repetitions
+                )
+            yield study.ResultDict(params=param_resolver, measurements=measurements)
+
     def _run(
         self, circuit: circuits.Circuit, param_resolver: study.ParamResolver, repetitions: int
     ) -> Dict[str, np.ndarray]:
@@ -158,12 +195,7 @@ class QasmSimulator(SimulatesSamples):
                     for _ in op.qubits:
                         value.append(sample[qb_index])
                         qb_index = qb_index + 1
-                    self._memory[key].append(np.asarray([value]))
-
-            __memory = {}
-            for key, value in self._memory.items():
-                __memory[key] = np.asarray(value)
-            self._memory = __memory
+                    self._memory[key] += [value]
 
             return self._memory
 
@@ -177,16 +209,14 @@ class QasmSimulator(SimulatesSamples):
                 for op in operations:
                     indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
                     key = protocols.measurement_key_name(op.gate)
-                    self._memory[key].append(np.asarray([self._add_qasm_measure(indices)]))
-
-        __memory = {}
-        for key, value in self._memory.items():
-            __memory[key] = np.asarray(value)
-        self._memory = __memory
+                    self._memory[key] = [self._add_qasm_measure(indices)]
 
         return self._memory
         
     def _try_gate(self, op: ops.GateOperation, indices: np.array):
+        if isinstance(op.gate, ops.IdentityGate):
+            return True
+
         # One qubit gate
         if isinstance(op.gate, ops.pauli_gates._PauliX):
             self._sim.x(indices[0])
