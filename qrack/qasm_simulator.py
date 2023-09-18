@@ -49,6 +49,9 @@ class QasmSimulator(SimulatesSamples):
       small values to zero in the simulation, gate-to-gate. (Only used
       if "normalize" is enabled. Default value: Qrack default)
 
+    * ``"tensor_network"`` (bool): If true, enable "QTensorNetwork" layer of
+      Qrack, including "QCircuit" and "past light cone" optimizations.
+
     * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
       Qrack, including Schmidt decomposition optimizations.
 
@@ -87,6 +90,7 @@ class QasmSimulator(SimulatesSamples):
         'max_shots': 65536,
         'description': 'An Schmidt-decomposed, OpenCL-based QASM simulator',
         'coupling_map': None,
+        'tensor_network': True,
         'schmidt_decompose': True,
         'paging': True,
         'stabilizer': True,
@@ -165,6 +169,7 @@ class QasmSimulator(SimulatesSamples):
 
         self._sample_measure = True
         self._sim = QrackSimulator(self._number_of_qubits,
+                                   isTensorNetwork=self._configuration['tensor_network'],
                                    isSchmidtDecomposeMulti=self._configuration['opencl_multi'],
                                    isSchmidtDecompose=self._configuration['schmidt_decompose'],
                                    isStabilizerHybrid=self._configuration['stabilizer'],
