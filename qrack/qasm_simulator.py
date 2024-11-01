@@ -74,6 +74,10 @@ class QasmSimulator(SimulatesSamples):
     * ``"opencl-multi"`` (bool): (If OpenCL and Schmidt decomposition
       are enabled,) distribute Schmidt-decomposed sub-engines among
       all available OpenCL devices.
+
+    * ``"noise"`` (float): If greater than 0/default, enable noisy
+      simulation with depolarization parameter equal to the value of
+      ``"noise"``, for every gate in the circuit.
     """
 
     DEFAULT_CONFIGURATION = {
@@ -98,7 +102,8 @@ class QasmSimulator(SimulatesSamples):
         'opencl': True,
         'opencl_multi': False,
         'hybrid_opencl': True,
-        'host_pointer': False
+        'host_pointer': False,
+        'noise': 0
     }
 
     # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
@@ -158,11 +163,14 @@ class QasmSimulator(SimulatesSamples):
 
         # Simulate as many unitary operations as possible before having to
         # repeat work for each sample.
-        unitary_prefix, general_suffix = (
-            split_into_matching_protocol_then_general(resolved_circuit, protocols.has_unitary)
-        )
+        unitary_prefix = []
+        general_suffix = resolved_circuit
+        if self._configuration['noise'] <= 0:
+            unitary_prefix, general_suffix = (
+                split_into_matching_protocol_then_general(resolved_circuit, protocols.has_unitary)
+            )
         
-        qubits = ops.QubitOrder.as_qubit_order(qubit_order).order_for(unitary_prefix.all_qubits())
+        qubits = ops.QubitOrder.as_qubit_order(qubit_order).order_for(resolved_circuit.all_qubits())
         num_qubits = len(qubits)
         qid_shape = protocols.qid_shape(qubits)
         qubit_map = {q: i for i, q in enumerate(qubits)}
@@ -177,7 +185,8 @@ class QasmSimulator(SimulatesSamples):
                                    isPaged=self._configuration['paging'],
                                    isCpuGpuHybrid=self._configuration['hybrid_opencl'],
                                    isOpenCL=self._configuration['opencl'],
-                                   isHostPointer=self._configuration['host_pointer'])
+                                   isHostPointer=self._configuration['host_pointer'],
+                                   noise=self._configuration['noise'])
 
         for moment in unitary_prefix:
             operations = moment.operations
@@ -191,16 +200,8 @@ class QasmSimulator(SimulatesSamples):
             indices = []
             for op in general_ops:
                 indices = indices + [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-            sample_measure = self._add_sample_measure(indices, repetitions)
-            for sample in sample_measure:
-                qb_index = 0
-                for op in general_ops:
-                    key = protocols.measurement_key_name(op.gate)
-                    value = []
-                    for _ in op.qubits:
-                        value.append(sample[qb_index])
-                        qb_index = qb_index + 1
-                    self._memory[key] += [value]
+            samples = self._add_sample_measure(indices, repetitions)
+            self._process_samples(samples, general_ops)
 
             return self._memory
 
@@ -208,13 +209,22 @@ class QasmSimulator(SimulatesSamples):
         preamble_sim = self._sim
 
         for shot in range(repetitions):
-            self._sim = preamble_sim.clone()
+            self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
             for moment in general_suffix:
                 operations = moment.operations
-                for op in operations:
-                    indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
-                    key = protocols.measurement_key_name(op.gate)
-                    self._memory[key] = [self._add_qasm_measure(indices)]
+                if all(isinstance(op.gate, ops.MeasurementGate) for op in operations):
+                    indices = []
+                    for op in operations:
+                        indices = indices + [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+                    samples = self._add_sample_measure(indices, 1)
+                    self._process_samples(samples, operations)
+                else:
+                    for op in operations:
+                        indices = [num_qubits - 1 - qubit_map[qubit] for qubit in op.qubits]
+                        if not self._try_gate(op, indices):
+                            if isinstance(op.gate, ops.MeasurementGate):
+                                raise RuntimeError("Qrack can't perform your mid-circuit measurement: " + str(op))
+                            raise RuntimeError("Qrack can't perform your gate: " + str(op))
 
         return self._memory
         
@@ -352,6 +362,22 @@ class QasmSimulator(SimulatesSamples):
             memory += [self._int_to_bits(int(value), len(measure_qubit))]
 
         return np.asarray(memory)
+
+    def _process_samples(self, samples, operations):
+        """Process measurement samples by measurement key.
+        Args:
+            samples: an array of lists of measurement sample bit values.
+            operations: The measurement operations that produced the samples.
+        """
+        for sample in samples:
+            qb_index = 0
+            for op in operations:
+                key = protocols.measurement_key_name(op.gate)
+                value = []
+                for _ in op.qubits:
+                    value.append(sample[qb_index])
+                    qb_index = qb_index + 1
+                self._memory[key] += [value]
 
     def _add_qasm_measure(self, measure_qubit):
         """Apply a measure instruction to a qubit.

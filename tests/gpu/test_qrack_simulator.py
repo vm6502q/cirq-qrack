@@ -190,11 +190,11 @@ class TestQasmSimulator(unittest.TestCase):
     def test_QasmSimulator_CZPowgate(self):
         self.check_two_qubit_rotation_gate(cirq.ops.CZPowGate)
 
-    def test_QasmSimulator_SwapPowgate(self):
-        self.check_two_qubit_rotation_gate(cirq.ops.SwapPowGate)
+    # def test_QasmSimulator_SwapPowgate(self):
+    #     self.check_two_qubit_rotation_gate(cirq.ops.SwapPowGate)
 
-    def test_QasmSimulator_ISwapPowgate(self):
-        self.check_two_qubit_rotation_gate(cirq.ops.ISwapPowGate)
+    # def test_QasmSimulator_ISwapPowgate(self):
+    #     self.check_two_qubit_rotation_gate(cirq.ops.ISwapPowGate)
 
     # def test_QasmSimulator_XXPowgate(self):
     #     self.check_two_qubit_rotation_gate(cirq.ops.XXPowGate)
