@@ -96,7 +96,7 @@ class QasmSimulator(SimulatesSamples):
         'coupling_map': None,
         'tensor_network': True,
         'schmidt_decompose': True,
-        'paging': True,
+        'paging': False,
         'stabilizer': False,
         'qbdt': False,
         'opencl': True,
