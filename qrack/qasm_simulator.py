@@ -207,7 +207,7 @@ class QasmSimulator(SimulatesSamples):
         self._sample_measure = False
         preamble_sim = self._sim
 
-        for shot in range(repetitions):
+        for _ in range(repetitions):
             self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
             for moment in general_suffix:
                 operations = moment.operations
