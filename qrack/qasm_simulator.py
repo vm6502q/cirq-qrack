@@ -172,7 +172,6 @@ class QasmSimulator(SimulatesSamples):
         
         qubits = ops.QubitOrder.as_qubit_order(qubit_order).order_for(resolved_circuit.all_qubits())
         num_qubits = len(qubits)
-        qid_shape = protocols.qid_shape(qubits)
         qubit_map = {q: i for i, q in enumerate(qubits)}
 
         self._sample_measure = True
@@ -378,6 +377,8 @@ class QasmSimulator(SimulatesSamples):
                     value.append(sample[qb_index])
                     qb_index = qb_index + 1
                 self._memory[key] += [value]
+        for key, value in self._memory.items():
+            self._memory[key] = np.asarray(value)
 
     def _add_qasm_measure(self, measure_qubit):
         """Apply a measure instruction to a qubit.
