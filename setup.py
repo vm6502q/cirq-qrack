@@ -4,7 +4,8 @@ import os
 from distutils.core import setup
 
 requirements = [
-    'pyqrack==2.*'
+    'pyqrack==2.*',
+    'cirq==1.*'
 ]
 
 # Handle version.
