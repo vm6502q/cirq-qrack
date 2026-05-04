@@ -40,44 +40,41 @@ class QasmSimulator(SimulatesSamples):
     ``backend_options`` kwarg for :meth:`QasmSimulator.run` or
     ``qiskit.execute``:
 
-    * ``"normalize"`` (bool): Keep track of the total global probability
-      normalization, and correct toward exactly 1. (Also turns on
-      "zero_threshold". With "zero_threshold">0 "schmidt_decompose"=True,
-      this can actually improve execution time, for opportune circuits.)
-
-    * ``"zero_threshold"`` (double): Sets the threshold for truncating
-      small values to zero in the simulation, gate-to-gate. (Only used
-      if "normalize" is enabled. Default value: Qrack default)
-
-    * ``"tensor_network"`` (bool): If true, enable "QTensorNetwork" layer of
-      Qrack, including "QCircuit" and "past light cone" optimizations.
-
-    * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
-      Qrack, including Schmidt decomposition optimizations.
-
-    * ``"paging"`` (bool): If true, enable "QPager" layer of Qrack.
-
     * ``"stabilizer"`` (bool): If true, enable Qrack "QStabilizerHybrid"
       layer of Qrack. (This can be enabled with universal gate simulations.)
 
-    * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
+    * ``"near_clifford_cpu"`` (bool): If true, enable optimized settings for
+      pure-CPU Clifford-RZ simulation.
+
+    * ``"approx_near_clifford"`` (bool): If true, enable stochastic approximate
+      near-Clifford simulation.
+
+    * ``"qbdt"`` (bool): If true, enable quantum binary decision tree
+      simulation mode.
+
+    * ``"gpu"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
       If OpenCL is not available, simulation will fall back to CPU.
 
-    * ``"opencl_device_id"`` (int): (If OpenCL is enabled,) choose
-      the OpenCl device to simulate on, (indexed by order of device
-      discovery on OpenCL load/compilation). "-1" indicates to use
-      the Qrack default device, (the last discovered, which tends to
-      be a non-CPU accelerator, on common personal hardware systems.)
-      If "opencl-multi" is active, set the default device index.
+    * ``"sd_multi"`` (bool): (If GPU is enabled) distribute
+      Schmidt-decomposed sub-engines among all available GPU devices.
 
-    * ``"opencl-multi"`` (bool): (If OpenCL and Schmidt decomposition
-      are enabled,) distribute Schmidt-decomposed sub-engines among
-      all available OpenCL devices.
+    * ``"host_pointer"`` (bool): If true, allocate GPU vectors on host side.
+      (This sometimes helps performance for integrated accelerators, particularly.)
 
     * ``"noise"`` (float): If greater than 0/default, enable noisy
       simulation with depolarization parameter equal to the value of
       ``"noise"``, for every gate in the circuit.
+
+    * ``"sdrp"`` (float): If greater than 0/default, enable Schmidt
+      decomposition rounding parameter (SDRP) with parameter value.
+
+    * ``"t_injection"`` (bool): If true, resort to exact near-Clifford
+      simulation when gate set is Clifford+RZ.
+
+    * ``"reactive_separate"`` (bool): If true, reactively and aggressively
+      look for subsystem separability under Schmidt decomposition. (Not
+      recommended for general-case simulation)
     """
 
     DEFAULT_CONFIGURATION = {
@@ -94,16 +91,17 @@ class QasmSimulator(SimulatesSamples):
         'max_shots': 65536,
         'description': 'An Schmidt-decomposed, OpenCL-based QASM simulator',
         'coupling_map': None,
-        'tensor_network': True,
-        'schmidt_decompose': True,
-        'paging': True,
+        'gpu': True,
         'stabilizer': False,
+        'near_clifford_cpu': False,
+        'approx_near_clifford': False,
         'qbdt': False,
-        'opencl': True,
-        'opencl_multi': False,
-        'hybrid_opencl': True,
+        'sd_multi': False,
         'host_pointer': False,
-        'noise': 0
+        'noise': 0,
+        'sdrp': 0,
+        't_injection': True,
+        'reactive_separate': False
     }
 
     # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
@@ -176,16 +174,18 @@ class QasmSimulator(SimulatesSamples):
 
         self._sample_measure = True
         self._sim = QrackSimulator(self._number_of_qubits,
-                                   isTensorNetwork=self._configuration['tensor_network'],
-                                   isSchmidtDecomposeMulti=self._configuration['opencl_multi'],
-                                   isSchmidtDecompose=self._configuration['schmidt_decompose'],
-                                   isStabilizerHybrid=self._configuration['stabilizer'],
-                                   isBinaryDecisionTree=self._configuration['qbdt'],
-                                   isPaged=self._configuration['paging'],
-                                   isCpuGpuHybrid=self._configuration['hybrid_opencl'],
-                                   isOpenCL=self._configuration['opencl'],
-                                   isHostPointer=self._configuration['host_pointer'],
+                                   is_schmidt_decompose_multi=self._configuration['sd_multi'],
+                                   is_stabilizer_hybrid=self._configuration['stabilizer'] or self._configuration['approx_near_clifford'],
+                                   is_gpu=self._configuration['gpu'],
+                                   is_binary_decision_tree=self._configuration['qbdt'],
+                                   is_near_clifford_tableau_writer=self._configuration['near_clifford_cpu'],
+                                   is_host_pointer=self._configuration['host_pointer'],
                                    noise=self._configuration['noise'])
+        if self._configuration['sdrp'] > 0:
+            self._sim.set_sdrp(self._configuration['sdrp'])
+        self._sim.set_use_exact_near_clifford(not self._configuration['approx_near_clifford'])
+        self._sim.set_t_injection(self._configuration['t_injection'])
+        self._sim.set_reactive_separate(self._configuration['reactive_separate'])
 
         for moment in unitary_prefix:
             operations = moment.operations
@@ -209,6 +209,11 @@ class QasmSimulator(SimulatesSamples):
 
         for _ in range(repetitions):
             self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+            if self._configuration['sdrp'] > 0:
+                self._sim.set_sdrp(self._configuration['sdrp'])
+            self._sim.set_use_exact_near_clifford(not self._configuration['approx_near_clifford'])
+            self._sim.set_t_injection(self._configuration['t_injection'])
+            self._sim.set_reactive_separate(self._configuration['reactive_separate'])
             for moment in general_suffix:
                 operations = moment.operations
                 if all(isinstance(op.gate, ops.MeasurementGate) for op in operations):
