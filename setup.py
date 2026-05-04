@@ -4,11 +4,11 @@ import os
 from distutils.core import setup
 
 requirements = [
-    'pyqrack>=1.30.0'
+    'pyqrack<3.0.0'
 ]
 
 # Handle version.
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
